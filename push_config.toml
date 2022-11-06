@@ -1,0 +1,10 @@
+[general]
+port = 9099
+workers = 2
+
+[security]
+enabled = true
+key = "u9kqCo7qhKIQ8RML9xUGNmcZLVWmS8OsR2UN9jsZuaCY3aqPKGENRWmA36f9r47FHnqXlKuMvgsl0hnft7qCAN8iXHw94nHS4D6dxA07BX1lUjwuMJ0t73Z9wJY25Mpu"
+
+[log]
+level = "debug"

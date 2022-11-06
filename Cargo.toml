@@ -1,0 +1,12 @@
+[workspace]
+
+members = [
+    "bitrix-channels",
+    "bitrix-actix-protobuf",
+    "bitrix-server"
+]
+
+[workspace.dependencies]
+actix-web = "4"
+thiserror = "1.0.30"
+futures-util = { version = "0.3.7", default-features = false }
