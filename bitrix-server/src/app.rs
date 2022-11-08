@@ -17,11 +17,29 @@ use crate::{
     session::WsPullSession,
 };
 
-use actix_web::web::ServiceConfig;
+/*
+Finally we need to get requests:
 
-pub fn routes_configure(cfg: &mut ServiceConfig) {
-    cfg.service(web::resource("/pub/").to(publication))
-       .service(web::resource("/subws/").to(sub_ws));
+POST /pub/ -> Application.publish. Trusted request.
+POST /pub/?binaryMode=true -> Application.processClientRequest. Trusted request.
+GET /pub/ -> Application.getChannelStats. Trusted request.
+
+POST /rest/ -> Application.processClientRequest. Untrusted request.
+Client websocket -> Application.processClientRequest. Untrusted request.
+
+GET /server-stat/ -> Application.getServerStats. Trusted request.
+
+GET /sub/ -> Application.subscribe. Long Polling requests.
+GET UPGRADE /sub/ -> Application.subscribe. Websocket requests.
+*/
+
+pub fn routes_configure(cfg: &mut web::ServiceConfig) {
+    /* Easy healthcheck */
+    cfg.service(web::resource("/").route(web::get().to(|| HttpResponse::Ok())))
+        .service(web::scope("/bitrix")
+            .service(web::resource("/pub/").to(publication))
+            .service(web::resource("/subws/").to(sub_ws))
+       );
 }
 
 #[derive(Serialize, Deserialize, Debug)]

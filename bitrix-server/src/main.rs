@@ -1,4 +1,4 @@
-use actix_web::{middleware::Logger, web, App, HttpResponse, HttpServer};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 use bitrix_channels::{Parser, Signature};
 use log::info;
 use std::env;
@@ -46,9 +46,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(parser.clone()))
-            /* Easy healthcheck */
-            .service(web::resource("/").route(web::get().to(|| HttpResponse::Ok())))
-            .service(web::scope("/bitrix").configure(app::routes_configure))
+            .configure(app::routes_configure)
             .wrap(Logger::default())
     })
     .workers(settings.general.workers)
