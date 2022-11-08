@@ -32,6 +32,10 @@ impl Parser {
         self.check_key = false;
     }
 
+    pub fn set_signature(&mut self, signature: Signature) {
+        self.hasher = signature;
+    }
+
     pub fn parse(&self, line: String) -> ChannelParseResult<Vec<Channel>> {
         if line.is_empty() {
             return Err(ParseError::EmptyString);
@@ -88,6 +92,17 @@ impl Parser {
             .collect::<Vec<Channel>>();
 
         Ok(channels)
+    }
+
+    pub fn get_key(&self) -> String {
+        self.hasher.get_key()
+    }
+
+    pub fn get_status(&self) -> String {
+        match self.check_key {
+            true  => format!("enabled with key {}", self.hasher.get_key()),
+            false => "disabled".to_string(),
+        }
     }
 }
 
@@ -269,6 +284,34 @@ mod tests {
         parser.signature_check_off();
 
         assert!(!parser.check_key);
+    }
+
+    #[test]
+    fn test_set_signature_check() {
+        let mut parser = Parser::new(true, Signature::default());
+
+        let new_signature = Signature::new("abc".to_string());
+
+        assert_eq!(parser.get_key(), "".to_string());
+
+        parser.set_signature(new_signature);
+
+        assert_eq!(parser.get_key(), "abc".to_string());
+    }
+
+
+    #[test]
+    fn test_get_parser_status_disabled() {
+        let parser = Parser::new(false, Signature::default());
+
+        assert_eq!(parser.get_status(), "disabled".to_string());
+    }
+
+    #[test]
+    fn test_get_parser_status_enabled() {
+        let parser = Parser::new(true, Signature::new("abc".to_string()));
+
+        assert_eq!(parser.get_status(), "enabled with key abc".to_string());
     }
 
     #[test]
