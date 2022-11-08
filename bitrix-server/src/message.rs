@@ -1,6 +1,6 @@
 use crate::items;
-use bitrix_channels::Channel;
 use actix::{Message, Recipient};
+use bitrix_channels::Channel;
 
 #[derive(Clone, Message)]
 #[rtype(result = "()")]

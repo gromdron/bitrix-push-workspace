@@ -1,7 +1,7 @@
 use actix::{fut, prelude::*};
 use actix_web_actors::ws;
-use prost::Message;
 use bitrix_actix_protobuf;
+use prost::Message;
 
 use bitrix_channels::Channel;
 
@@ -12,10 +12,7 @@ use crate::{
 
 #[derive(Default, Debug)]
 pub struct WsPullSession {
-    id: usize,
-    room: String,
     pub channels: Vec<Channel>,
-    name: Option<String>,
 }
 
 impl Actor for WsPullSession {
@@ -33,12 +30,7 @@ impl Actor for WsPullSession {
     }
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
-        log::info!(
-            "WsPullSession closed for {}({}) in room {}",
-            self.name.clone().unwrap_or_else(|| "anon".to_string()),
-            self.id,
-            self.room
-        );
+        log::info!("WsPullSession stopped");
     }
 }
 

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
+use crate::message::{ProtobufMessage, SendPullMessage, SubscribeChannelMessage};
 use actix::prelude::*;
 use actix_broker::BrokerSubscribe;
 use bitrix_channels::Channel;
-use crate::message::{ProtobufMessage, SendPullMessage, SubscribeChannelMessage};
 
 type Client = Recipient<ProtobufMessage>;
 type Subscribers = Vec<Client>;

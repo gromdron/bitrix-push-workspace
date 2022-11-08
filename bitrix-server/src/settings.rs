@@ -32,11 +32,10 @@ pub struct Settings {
 
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
-        let config_file = env::var("CONFIG_FILE").unwrap_or_else(|_| "./push-server.toml".into());
+        let config_file = env::var("CONFIG_FILE").unwrap_or_else(|_| "./push_config.toml".into());
 
         let s = Config::builder()
-            .add_source(File::with_name(&config_file)
-                .required(true))
+            .add_source(File::with_name(&config_file).required(true))
             .add_source(Environment::with_prefix("push"))
             .build()?;
 
