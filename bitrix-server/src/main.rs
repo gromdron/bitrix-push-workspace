@@ -1,6 +1,6 @@
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use bitrix_channels::{Parser, Signature};
-use log::info;
+use log::{info, debug};
 use std::env;
 mod app;
 mod message;
@@ -41,7 +41,7 @@ async fn main() -> std::io::Result<()> {
         false => Parser::default(),
     };
 
-    info!("security parser is {}", parser.get_status());
+    debug!("security parser is {}", parser.get_status());
 
     HttpServer::new(move || {
         App::new()

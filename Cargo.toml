@@ -10,3 +10,4 @@ members = [
 actix-web = "4"
 thiserror = "1.0.30"
 futures-util = { version = "0.3.7", default-features = false }
+uuid = { version = "1.2.1", features = ["v4"] }

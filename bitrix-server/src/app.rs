@@ -1,20 +1,21 @@
-
 use actix_web::http::header::{ContentType, HeaderValue};
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
 use futures_util::stream::StreamExt as _;
 use serde::{Deserialize, Serialize};
+use log::{debug, error};
 
 use bitrix_channels::Parser;
 use actix_broker::{Broker, SystemBroker};
 use bitrix_actix_protobuf;
 use bitrix_channels::Channel;
 
+
 use crate::{
     utils,
     items,
     message::{SendPullMessage, ProtobufMessage},
-    session::WsPullSession,
+    session::WsSession,
 };
 
 /*
@@ -42,30 +43,23 @@ pub fn routes_configure(cfg: &mut web::ServiceConfig) {
        );
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(deny_unknown_fields)]
-struct SubscribeWsQueryString {
-    #[serde(rename(deserialize = "CHANNEL_ID"))]
-    channel_ids: String,
-    #[serde(rename(deserialize = "binaryMode"))]
-    is_binary: Option<bool>,
-    revision: Option<i32>,
-    mid: Option<String>,
-}
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-struct PublishQueryString {
+struct UnifiedQueryString {
     #[serde(rename(deserialize = "CHANNEL_ID"))]
     channel_ids: Option<String>,
     #[serde(rename(deserialize = "binaryMode"))]
     is_binary: Option<bool>,
+    revision: Option<i32>,
+    mid: Option<String>,
+    time: Option<i32>,
 }
 
 async fn publication(
     req: HttpRequest,
     mut payload: web::Payload,
-    query: web::Query<PublishQueryString>,
+    query: web::Query<UnifiedQueryString>,
     parser: web::Data<Parser>
 ) -> Result<HttpResponse, Error> {
     if query.is_binary.is_some() {
@@ -226,26 +220,45 @@ async fn publication(
 async fn sub_ws(
     req: HttpRequest,
     stream: web::Payload,
-    query: web::Query<SubscribeWsQueryString>,
+    query: web::Query<UnifiedQueryString>,
     parser: web::Data<Parser>
 ) -> Result<impl Responder, Error> {
-    let mut pull_session = WsPullSession::default();
 
-    let parse_channelds_result = parser.parse(query.channel_ids.clone());
-
-    match parse_channelds_result {
-        Ok(channels) => {
-            pull_session.channels = channels;
-        }
-        Err(text) => {
-            log::debug!("Parsed channel failed: {}", text);
-            return Ok(HttpResponse::BadRequest()
-                .insert_header(("X-PUSH-ERR", format!("[ES001] Parse channels error: {}", text)))
-                .content_type(ContentType::plaintext())
-                .body(text.to_string())
-            );
-        }
+    if query.channel_ids.is_none() {
+        error!("Bad request, channel ids is empty!");
+        return Ok(HttpResponse::BadRequest()
+            .insert_header(("X-PUSH-ERR", format!("[ES001] Channel ids empty")))
+            .content_type(ContentType::plaintext())
+            .body("Channels is empty".to_string())
+        );
     }
+
+    let channel_ids: String = query.channel_ids.as_ref().unwrap().clone();
+
+    let mut pull_session = WsSession::default();
+
+    let parse_channelds_result = parser.parse(channel_ids.clone());
+
+    let channels: Vec<Channel> = match parse_channelds_result {
+        Ok(parsed_channels) => {
+            parsed_channels
+        }
+        Err(error) => {
+            debug!("Channel parse error: {} on string '{}'", error, channel_ids.clone());
+            Vec::new()
+        }
+    };
+
+    if channels.is_empty() {
+        error!("Couldn't parse channel ids. Channels empty.");
+        return Ok(HttpResponse::BadRequest()
+            .insert_header(("X-PUSH-ERR", format!("[ES002] Channel ids empty: {}", channel_ids.clone())))
+            .content_type(ContentType::plaintext())
+            .body("Channels is empty".to_string())
+        );
+    }
+
+    pull_session.set_channels(channels);
 
     ws::start(pull_session, &req, stream)
 }
