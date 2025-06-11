@@ -2,20 +2,18 @@ use actix_web::http::header::{ContentType, HeaderValue};
 use actix_web::{web, Error, HttpRequest, HttpResponse, Responder};
 use actix_web_actors::ws;
 use futures_util::stream::StreamExt as _;
-use serde::{Deserialize, Serialize};
 use log::{debug, error};
+use serde::{Deserialize, Serialize};
 
-use bitrix_channels::Parser;
 use actix_broker::{Broker, SystemBroker};
-use bitrix_actix_protobuf;
 use bitrix_channels::Channel;
-
+use bitrix_channels::Parser;
 
 use crate::{
-    utils,
     items,
-    message::{SendPullMessage, ProtobufMessage},
+    message::{ProtobufMessage, SendPullMessage},
     session::WsSession,
+    utils,
 };
 
 /*
@@ -36,19 +34,20 @@ GET UPGRADE /sub/ -> Application.subscribe. Websocket requests.
 
 pub fn routes_configure(cfg: &mut web::ServiceConfig) {
     /* Easy healthcheck */
-    cfg.service(web::resource("/").route(web::get().to(|| HttpResponse::Ok())))
-        .service(web::scope("/bitrix")
-            .service(web::resource("/pub/").to(publication))
-            .service(web::resource("/subws/").to(sub_ws))
-       );
+    cfg.service(web::resource("/").route(web::get().to(HttpResponse::Ok)))
+        .service(
+            web::scope("/bitrix")
+                .service(web::resource("/pub/").to(publication))
+                .service(web::resource("/subws/").to(sub_ws)),
+        );
 }
-
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 struct UnifiedQueryString {
     #[serde(rename(deserialize = "CHANNEL_ID"))]
     channel_ids: Option<String>,
+    hostname: Option<String>,
     #[serde(rename(deserialize = "binaryMode"))]
     is_binary: Option<bool>,
     revision: Option<i32>,
@@ -60,7 +59,7 @@ async fn publication(
     req: HttpRequest,
     mut payload: web::Payload,
     query: web::Query<UnifiedQueryString>,
-    parser: web::Data<Parser>
+    parser: web::Data<Parser>,
 ) -> Result<HttpResponse, Error> {
     if query.is_binary.is_some() {
         let requests_batch = bitrix_actix_protobuf::ProtoBufMessage::<items::RequestBatch>::new(
@@ -145,7 +144,7 @@ async fn publication(
                 _ => {
                     log::error!(
                         "{}",
-                        format!("Got strange command: {:#?}. Ignore.", request_command).to_string()
+                        format!("Got strange command: {:#?}. Ignore.", request_command)
                     );
                     continue;
                 }
@@ -168,7 +167,13 @@ async fn publication(
 
         if parse_channelds_result.is_err() {
             return Ok(HttpResponse::BadRequest()
-                .insert_header(("X-PUSH-ERR", format!("[EPR002] Channel ids parser error: {}", parse_channelds_result.err().unwrap())))
+                .insert_header((
+                    "X-PUSH-ERR",
+                    format!(
+                        "[EPR002] Channel ids parser error: {}",
+                        parse_channelds_result.err().unwrap()
+                    ),
+                ))
                 .content_type(ContentType::plaintext())
                 .finish());
         }
@@ -221,16 +226,14 @@ async fn sub_ws(
     req: HttpRequest,
     stream: web::Payload,
     query: web::Query<UnifiedQueryString>,
-    parser: web::Data<Parser>
+    parser: web::Data<Parser>,
 ) -> Result<impl Responder, Error> {
-
     if query.channel_ids.is_none() {
         error!("Bad request, channel ids is empty!");
         return Ok(HttpResponse::BadRequest()
-            .insert_header(("X-PUSH-ERR", format!("[ES001] Channel ids empty")))
+            .insert_header(("X-PUSH-ERR", "[ES001] Channel ids empty".to_string()))
             .content_type(ContentType::plaintext())
-            .body("Channels is empty".to_string())
-        );
+            .body("Channels is empty".to_string()));
     }
 
     let channel_ids: String = query.channel_ids.as_ref().unwrap().clone();
@@ -240,11 +243,13 @@ async fn sub_ws(
     let parse_channelds_result = parser.parse(channel_ids.clone());
 
     let channels: Vec<Channel> = match parse_channelds_result {
-        Ok(parsed_channels) => {
-            parsed_channels
-        }
+        Ok(parsed_channels) => parsed_channels,
         Err(error) => {
-            debug!("Channel parse error: {} on string '{}'", error, channel_ids.clone());
+            debug!(
+                "Channel parse error: {} on string '{}'",
+                error,
+                channel_ids.clone()
+            );
             Vec::new()
         }
     };
@@ -252,10 +257,12 @@ async fn sub_ws(
     if channels.is_empty() {
         error!("Couldn't parse channel ids. Channels empty.");
         return Ok(HttpResponse::BadRequest()
-            .insert_header(("X-PUSH-ERR", format!("[ES002] Channel ids empty: {}", channel_ids.clone())))
+            .insert_header((
+                "X-PUSH-ERR",
+                format!("[ES002] Channel ids empty: {}", channel_ids.clone()),
+            ))
             .content_type(ContentType::plaintext())
-            .body("Channels is empty".to_string())
-        );
+            .body("Channels is empty".to_string()));
     }
 
     pull_session.set_channels(channels);

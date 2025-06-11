@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use hmac::{Hmac, Mac};
 use sha1::Sha1;
 use thiserror::Error;
@@ -100,7 +102,7 @@ impl Parser {
 
     pub fn get_status(&self) -> String {
         match self.check_key {
-            true  => format!("enabled with key {}", self.hasher.get_key()),
+            true => format!("enabled with key {}", self.hasher.get_key()),
             false => "disabled".to_string(),
         }
     }
@@ -174,9 +176,9 @@ impl Channel {
     }
 }
 
-impl ToString for Channel {
-    fn to_string(&self) -> String {
-        self.number.clone()
+impl Display for Channel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.number)
     }
 }
 
@@ -298,7 +300,6 @@ mod tests {
 
         assert_eq!(parser.get_key(), "abc".to_string());
     }
-
 
     #[test]
     fn test_get_parser_status_disabled() {

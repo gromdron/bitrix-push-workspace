@@ -1,6 +1,5 @@
 use actix::{fut, prelude::*};
 use actix_web_actors::ws;
-use bitrix_actix_protobuf;
 use prost::Message;
 use uuid::Uuid;
 
@@ -20,9 +19,6 @@ pub struct WsSession {
 impl WsSession {
     pub fn get_target(&self) -> String {
         format!("WsSession:{}",self.id.clone())
-    }
-    pub fn get_channels(&self) -> Vec<Channel> {
-        self.channels.clone()
     }
     pub fn set_channels(&mut self, channels: Vec<Channel>) {
         self.channels = channels;
