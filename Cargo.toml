@@ -1,13 +1,28 @@
-[workspace]
-resolver = "2"
-members = [
-    "bitrix-channels",
-    "bitrix-actix-protobuf",
-    "bitrix-server"
-]
+[package]
+name = "bitrix-push-workspace-v2"
+version = "0.1.0"
+edition = "2024"
 
-[workspace.dependencies]
-actix-web = "4"
-thiserror = "1.0.30"
-futures-util = { version = "0.3.7", default-features = false }
-uuid = { version = "1.2.1", features = ["v4"] }
+[dependencies]
+sha1 = "0.10.5"
+hmac = "0.12.1"
+axum = { version = "0.7", features = ["ws", "macros", "http2", "original-uri"] }
+tokio = { version = "1.0", features = ["full"] }
+tokio-tungstenite = "0.23"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+bytes = "1.0"
+thiserror = "1.0"
+tokio-util = { version = "0.7", features = ["codec"] }
+futures-util = "0.3"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+dashmap = "5.5"
+log = "0.4"
+fern = { version = "0.7" }
+config = { version = "0.15", default-features = false, features = ["toml"] }
+prost = "0.13"
+hex = "0.4"
+
+[build-dependencies]
+prost-build = "0.13"

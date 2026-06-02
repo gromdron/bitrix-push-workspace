@@ -1,15 +1,11 @@
 syntax = "proto3";
 
-option php_namespace = "Bitrix\\Pull\\Protobuf";
-
-message Sender
-{
+message Sender {
     SenderType type = 1;
     bytes id = 2;
 }
 
-enum SenderType
-{
+enum SenderType {
     UNKNOWN = 0;
     CLIENT = 1;
     BACKEND = 2;

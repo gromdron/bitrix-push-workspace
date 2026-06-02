@@ -2,9 +2,17 @@
 port = 9099
 workers = 2
 
+[history]
+max_length = 5000
+max_ttl = 600
+default_ttl = 30
+
 [security]
-enabled = true
-key = "u9kqCo7qhKIQ8RML9xUGNmcZLVWmS8OsR2UN9jsZuaCY3aqPKGENRWmA36f9r47FHnqXlKuMvgsl0hnft7qCAN8iXHw94nHS4D6dxA07BX1lUjwuMJ0t73Z9wJY25Mpu"
+enabled = false
+key = "CkRkXJYp1zpaHrVavjF6mN5tJNksa5Oh70MjpoPsXcN5haGJgN9J2CnkKGPQLj7jOyADgDrRVWe32PsGL6uWcIRcBiCPyBiCpR6NNKBwdCorDRMaPFUJNHWlcjNcHK9Q"
 
 [log]
-level = "debug"
+level = "trace"
+
+[long_poll]
+timeout_secs = 30

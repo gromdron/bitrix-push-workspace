@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+import "sender.proto";
+import "receiver.proto";
+
+message RequestBatch {
+    repeated Request requests = 1;
+}
+
+message Request {
+    oneof command {
+        IncomingMessagesRequest incomingMessages = 1;
+        ChannelStatsRequest channelStats = 2;
+        ServerStatsRequest serverStats = 3;
+        RegisterRequest registration = 4;
+    }
+}
+
+message IncomingMessagesRequest {
+    repeated IncomingMessage messages = 1;
+}
+
+message IncomingMessage {
+    repeated Receiver receivers = 1;
+    Sender sender = 2;
+    string body = 3;
+    uint32 expiry = 4;
+    string type = 5;
+}
+
+message ChannelStatsRequest {
+    repeated ChannelId channels = 1;
+}
+
+message ChannelId {
+    bytes id = 1;
+    bool isPrivate = 2;
+    bytes signature = 3;
+}
+
+message ServerStatsRequest {
+}
+
+message RegisterRequest {
+    string verificationQuery = 1;
+    string host = 2;
+}
+
+message ResponseBatch {
+    repeated Response responses = 1;
+}
+
+message Response {
+    oneof command {
+        OutgoingMessagesResponse outgoingMessages = 1;
+        ChannelStatsResponse channelStats = 2;
+        JsonResponse serverStats = 3;
+        string json = 4;
+    }
+}
+
+message OutgoingMessagesResponse {
+    repeated OutgoingMessage messages = 1;
+}
+
+message OutgoingMessage {
+    bytes id = 1;
+    string body = 2;
+    uint32 expiry = 3;
+    fixed32 created = 4;
+    Sender sender = 5;
+}
+
+message ChannelStatsResponse {
+    repeated ChannelStats channels = 1;
+}
+
+message ChannelStats {
+    bytes id = 1;
+    bool isPrivate = 2;
+    bool isOnline = 3;
+}
+
+message JsonResponse {
+    string json = 1;
+}
