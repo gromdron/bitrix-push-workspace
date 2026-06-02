@@ -33,10 +33,11 @@ pub async fn bitrix_ws_handler(
     };
 
     let client_id = Uuid::new_v4().to_string();
+    let binary_mode = params.is_binary.unwrap_or(false);
 
     info!(
-        "Bitrix WS connect: client_id={} channels={:?}",
-        client_id, channels
+        "Bitrix WS connect: client_id={} channels={:?} binaryMode={}",
+        client_id, channels, binary_mode
     );
 
     state
@@ -51,7 +52,7 @@ pub async fn bitrix_ws_handler(
             .insert(client_id.clone());
     }
 
-    ws.on_upgrade(move |socket| handle_websocket(socket, client_id, state, channels))
+    ws.on_upgrade(move |socket| handle_websocket(socket, client_id, state, channels, binary_mode))
 }
 
 const PING_INTERVAL: std::time::Duration = std::time::Duration::from_secs(120);
@@ -61,6 +62,7 @@ async fn handle_websocket(
     client_id: ClientId,
     state: Arc<AppState>,
     channels: Vec<String>,
+    binary_mode: bool,
 ) {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<SharedMessage>();
     state.ws_senders.insert(client_id.clone(), tx);
