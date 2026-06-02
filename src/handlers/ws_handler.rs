@@ -13,11 +13,40 @@ use uuid::Uuid;
 
 use prost::Message as ProstMessage;
 
-use crate::models::{BitrixWsQuery, ClientId, SharedMessage};
+use crate::models::{BitrixWsQuery, ClientId, Message, SharedMessage};
 use crate::proto::bitrix::{
     ResponseBatch, Response, OutgoingMessagesResponse, OutgoingMessage, Sender, SenderType,
 };
 use crate::state::AppState;
+
+fn encode_message_protobuf(msg: &Message) -> Vec<u8> {
+    let outgoing = OutgoingMessage {
+        id: msg.id.as_bytes().to_vec(),
+        body: serde_json::to_string(&msg.payload).unwrap_or_default(),
+        expiry: msg.expiry,
+        created: msg.created_at.timestamp() as u32,
+        sender: Some(Sender {
+            r#type: SenderType::Backend as i32,
+            id: vec![],
+        }),
+    };
+
+    let response = Response {
+        command: Some(crate::proto::bitrix::response::Command::OutgoingMessages(
+            OutgoingMessagesResponse {
+                messages: vec![outgoing],
+            },
+        )),
+    };
+
+    let batch = ResponseBatch {
+        responses: vec![response],
+    };
+
+    let mut buf = Vec::new();
+    batch.encode(&mut buf).unwrap_or_default();
+    buf
+}
 
 pub async fn bitrix_ws_handler(
     Query(params): Query<BitrixWsQuery>,
@@ -73,13 +102,16 @@ async fn handle_websocket(
     loop {
         tokio::select! {
             Some(msg) = rx.recv() => {
-                    if socket
-                    .send(axum::extract::ws::Message::Text(
+                let send_result = if binary_mode {
+                    let bytes = encode_message_protobuf(&msg);
+                    socket.send(axum::extract::ws::Message::Binary(bytes)).await
+                } else {
+                    socket.send(axum::extract::ws::Message::Text(
                         serde_json::to_string(&*msg).unwrap(),
-                    ))
-                    .await
-                    .is_err()
-                {
+                    )).await
+                };
+
+                if send_result.is_err() {
                     warn!("WS send failed: client_id={}", client_id);
                     break;
                 }
