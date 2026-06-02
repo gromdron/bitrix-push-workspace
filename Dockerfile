@@ -13,15 +13,15 @@ RUN apt-get update \
 
 COPY . .
 
-RUN cargo install --path bitrix-server
+RUN cargo install --path .
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
 WORKDIR /usr/src/push-server
 
-LABEL version="1.1" maintainer="Andrei Nikolaev <gromdron@yandex.ru>"
+LABEL version="2.0" maintainer="Andrei Nikolaev <gromdron@yandex.ru>"
 
-COPY --from=builder /usr/local/cargo/bin/push-server /usr/local/bin/push-server
+COPY --from=builder /usr/local/cargo/bin/bitrix-push-workspace /usr/local/bin/push-server
 
 COPY --from=builder /usr/src/push-server/push_config.toml /usr/src/push-server/push_config.toml
 

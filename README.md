@@ -1,17 +1,37 @@
-# Unofficial Bitrix Websocker server
+# Unofficial Bitrix WebSocket server
 
-Неофициальный websocket сервер для локальной разработки на Битрикс24в docker-контейнерах.
+Push-сервер это компонент Битрикс24 для поддержки обновлений в реальном времени (чат, уведомления, CRM). Текущий проект это замена — один бинарник без внешних зависимостей.
 
-## Как использовать docker образ?
+## Быстрый старт
 
->Инструкция подготовлена для среды [aclips/bitrix24-docker](https://github.com/aclips/bitrix24-docker), но сервер может быть использован для любого образа.
+Минимальный запуск за 2 минуты:
 
-Для этого необходимо сделать 3 простых шага:
-
-1. Сконфигурировать nginx-прокси для websocket запросов.
-
-Для этого в http-сецию конфигурацинного файла nginx добавить:
+```bash
+docker run -d --name push -p 9099:9099 gromdron/bitrix-push-workspace:v2.0
 ```
+
+Или через `docker-compose.yml`:
+
+```yaml
+services:
+  push:
+    image: gromdron/bitrix-push-workspace:v2.0
+    container_name: push
+    ports:
+      - "9099:9099"
+```
+
+После запуска в настройках Битрикс24 (*Настройки → Настройки модулей → Push and Pull*) укажите "Путь для публикации команд": `http://push:9099/bitrix/pub/`.
+
+## Полная настройка с nginx
+
+Если Битрикс24 работает за nginx, нужно настроить прокси для WebSocket/Long-polling. Проект тестировался на сборке [aclips/bitrix24-docker](https://github.com/aclips/bitrix24-docker), но подойдёт и другое окружение.
+
+### 1. Настроить nginx
+
+В `http`-секцию конфигурационного файла nginx добавить:
+
+```nginx
 upstream push-upstream {
     server push:9099;
 }
@@ -21,18 +41,17 @@ map $http_upgrade $connection_upgrade {
   '' 'close';
 }
 
-map $http_upgrade  $replace_upgrade {
+map $http_upgrade $replace_upgrade {
   default $http_upgrade;
   ''      "websocket";
 }
 ```
 
-В server-секцию добавить:
-```
+В `server`-секцию добавить:
+
+```nginx
 location ~* ^/bitrix/subws/ {
     proxy_pass http://push-upstream;
-    # http://blog.martinfjordvald.com/2013/02/websockets-in-nginx/
-    # 12h+0.5
     proxy_max_temp_file_size 0;
     proxy_read_timeout  43800;
     proxy_http_version 1.1;
@@ -54,23 +73,24 @@ location ~* ^/bitrix/rest/ {
 }
 ```
 
+### 2. Добавить сервис в docker-compose
 
-2. В `docker-compose.yml` файл добавить:
-
-```
+```yaml
   push:
-    build: 
+    build:
       context: ./containers/push
       dockerfile: ./Dockerfile
     container_name: ${PROJECT_PREFIX}_push
 ```
 
-3. Разместить в фапке `./containers/push` файлы:
+### 3. Подготовить файлы
 
-`Dockerfile` с содержимым:
+В директории `./containers/push` разместить два файла:
 
-```
-FROM gromdron/bitrix-push-workspace:v1.0
+**Dockerfile:**
+
+```dockerfile
+FROM gromdron/bitrix-push-workspace:v2.0
 
 WORKDIR /opt/push-server
 
@@ -83,6 +103,42 @@ ENV CONFIG_FILE=/opt/push-server/push_config.toml
 CMD ["push-server"]
 ```
 
-и файл push-server.toml из корня репозитория.
+**push_config.toml** — скопировать из корня репозитория и настроить под проект.
 
->Файл `push-server.toml` можно конифгурировать исходя из требований проекта
+## Конфигурация
+
+Файл `push_config.toml` — основной конфиг. Параметры:
+
+| Параметр | По умолчанию | Описание |
+|----------|-------------|----------|
+| `general.port` | 9099 | Порт сервера |
+| `history.max_length` | 5000 | Максимум сообщений в истории |
+| `history.max_ttl` | 600 | Максимальное время жизни сообщений (сек) |
+| `history.default_ttl` | 30 | TTL по умолчанию (сек) |
+| `security.enabled` | false | Проверка HMAC-подписи каналов |
+| `security.key` | — | Ключ подписи |
+| `log.level` | trace | Уровень логирования |
+| `long_poll.timeout_secs` | 30 | Таймаут long-poll запросов (сек) |
+
+Параметры можно переопределить через переменные окружения с префиксом `PUSH_`, например: `PUSH_GENERAL_PORT=8080`.
+
+## Сборка из исходников
+
+Для самостоятельной сборки потребуется:
+
+- Rust 1.87+
+- protobuf-compiler
+
+```bash
+# Установить зависимости (Ubuntu/Debian)
+sudo apt install -y protobuf-compiler
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup default 1.87
+
+# Клонировать и собрать
+git clone git@github.com:gromdron/bitrix-push-workspace.git
+cd bitrix-push-workspace
+cargo build --release
+```
+
+Готовый бинарник: `target/release/bitrix-push-workspace`.

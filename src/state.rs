@@ -26,7 +26,10 @@ impl AppState {
     pub fn new(settings: &Settings) -> Arc<Self> {
         debug!(
             "Configuration.\r\nHistory:\r\n - max len:{}\r\n - ttl: {}\r\n - default_ttl: {}\r\nChannel parser:\r\n - check sign: {}",
-            settings.history.max_length, settings.history.max_ttl, settings.history.default_ttl, settings.security.enabled
+            settings.history.max_length,
+            settings.history.max_ttl,
+            settings.history.default_ttl,
+            settings.security.enabled
         );
         let (message_tx, _) = broadcast::channel(BROADCAST_CAPACITY);
         Arc::new(Self {

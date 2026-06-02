@@ -15,7 +15,7 @@ use prost::Message as ProstMessage;
 
 use crate::models::{BitrixWsQuery, ClientId, Message, SharedMessage};
 use crate::proto::bitrix::{
-    ResponseBatch, Response, OutgoingMessagesResponse, OutgoingMessage, Sender, SenderType,
+    OutgoingMessage, OutgoingMessagesResponse, Response, ResponseBatch, Sender, SenderType,
 };
 use crate::state::AppState;
 
@@ -184,5 +184,60 @@ pub async fn broadcast_to_subscribers(state: &AppState, msg: &SharedMessage) {
             msg.id,
             delivered.len()
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::proto::bitrix::response;
+    use chrono::Utc;
+    use prost::Message as ProstMessage;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_encode_message_protobuf() {
+        let msg = Message {
+            id: Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap(),
+            channels: vec!["channel1".to_string()],
+            payload: serde_json::json!({"key": "value"}),
+            created_at: Utc::now(),
+            expiry: 30,
+        };
+
+        let bytes = encode_message_protobuf(&msg);
+        assert!(!bytes.is_empty());
+
+        let batch = ResponseBatch::decode(&bytes[..]).unwrap();
+        assert_eq!(batch.responses.len(), 1);
+
+        if let Some(response::Command::OutgoingMessages(outgoing)) = &batch.responses[0].command {
+            assert_eq!(outgoing.messages.len(), 1);
+            assert_eq!(outgoing.messages[0].body, r#"{"key":"value"}"#);
+            assert_eq!(outgoing.messages[0].expiry, 30);
+        } else {
+            panic!("Expected OutgoingMessages response");
+        }
+    }
+
+    #[test]
+    fn test_encode_message_protobuf_empty_payload() {
+        let msg = Message {
+            id: Uuid::new_v4(),
+            channels: vec!["ch1".to_string()],
+            payload: serde_json::json!({}),
+            created_at: Utc::now(),
+            expiry: 60,
+        };
+
+        let bytes = encode_message_protobuf(&msg);
+        let batch = ResponseBatch::decode(&bytes[..]).unwrap();
+
+        if let Some(response::Command::OutgoingMessages(outgoing)) = &batch.responses[0].command {
+            assert_eq!(outgoing.messages[0].body, "{}");
+            assert_eq!(outgoing.messages[0].expiry, 60);
+        } else {
+            panic!("Expected OutgoingMessages response");
+        }
     }
 }

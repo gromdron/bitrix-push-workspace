@@ -110,15 +110,10 @@ fn process_incoming_messages(
     let mut results = Vec::new();
 
     for msg in request.messages {
-        let channels: Vec<String> = msg
-            .receivers
-            .iter()
-            .map(|r| hex::encode(&r.id))
-            .collect();
+        let channels: Vec<String> = msg.receivers.iter().map(|r| hex::encode(&r.id)).collect();
 
-        let payload = serde_json::from_str(&msg.body).unwrap_or_else(|_| {
-            serde_json::json!({ "message": msg.body })
-        });
+        let payload = serde_json::from_str(&msg.body)
+            .unwrap_or_else(|_| serde_json::json!({ "message": msg.body }));
 
         let expiry = if msg.expiry > 0 {
             msg.expiry
